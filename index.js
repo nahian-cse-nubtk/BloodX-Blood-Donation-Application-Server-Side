@@ -74,19 +74,53 @@ async function run() {
     })
 
     //Donation request related api
-    app.post('/donationRequests',async(req,res)=>{
-        const donationRequestData = req.body
-        donationRequestData.createdAt = new Date()
-        const result = await donationRequestsCollection.insertOne(donationRequestData)
+    app.get('/donationRequests/:id/request',async(req,res)=>{
+        const id = req.params.id;
+        const query = {_id: new ObjectId(id)}
+        const result = await donationRequestsCollection.findOne(query)
         res.send(result);
     })
 
     app.get('/donationRequests/:email',async(req,res)=>{
         const email = req.params.email;
         const query ={requesterEmail:email}
-        const result = await donationRequestsCollection.find(query).toArray()
+        const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).toArray()
         res.send(result);
     })
+
+    app.post('/donationRequests',async(req,res)=>{
+        const donationRequestData = req.body
+        donationRequestData.createdAt = new Date()
+        const result = await donationRequestsCollection.insertOne(donationRequestData)
+        res.send(result);
+    })
+   app.patch('/donationRequests/:id/request', async(req,res)=>{
+    const id = req.params.id;
+    const data = req.body;
+    const query ={_id: new ObjectId(id)}
+    const updatedDoc = {
+        $set:{
+      bloodGroup: data.bloodGroup,
+      donationDate: data.donationDate,
+      donationTime: data.donationTime,
+      fullAddress: data.fullAddress,
+      hospitalName: data.hospitalName,
+      recipientDistrict: data.recipientDistrict,
+      recipientName: data.recipientName,
+      recipientUpazila: data.recipientUpazila,
+      requestMessage: data.requestMessage,
+        }
+    }
+    const result =await donationRequestsCollection.updateOne(query,updatedDoc)
+    res.send(result);
+   })
+   app.patch('/donationRequests/${id}/status')
+   app.delete('/donationRequests/:id/request',async(req,res)=>{
+       const {id} =req.params;
+       const query = {_id: new ObjectId(id)}
+       const result = await donationRequestsCollection.deleteOne(query)
+       res.send(result);
+   })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
