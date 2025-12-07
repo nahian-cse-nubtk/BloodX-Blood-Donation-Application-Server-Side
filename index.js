@@ -74,6 +74,16 @@ async function run() {
     })
 
     //Donation request related api
+    app.get('/donationRequests', async(req,res)=>{
+            const {email,limit=0,skip=0} =req.query
+            const query = {}
+            if(email){
+             query.requesterEmail = email
+            }
+            const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).skip(parseInt(skip)).limit(parseInt(limit)).toArray()
+            const totalRequests = await donationRequestsCollection.countDocuments({requesterEmail: email});
+            res.send({result,totalRequests})
+    })
     app.get('/donationRequests/:id/request',async(req,res)=>{
         const id = req.params.id;
         const query = {_id: new ObjectId(id)}
@@ -114,7 +124,18 @@ async function run() {
     const result =await donationRequestsCollection.updateOne(query,updatedDoc)
     res.send(result);
    })
-   app.patch('/donationRequests/${id}/status')
+   app.patch('/donationRequests/:id/status',async(req,res)=>{
+    const {id}=req.params
+    const {donationStatus}=req.body
+    const query = {_id: new ObjectId(id)}
+    const updatedDoc = {
+        $set:{
+            donationStatus: donationStatus
+        }
+    }
+    const result =await donationRequestsCollection.updateOne(query,updatedDoc)
+    res.send(result);
+   })
    app.delete('/donationRequests/:id/request',async(req,res)=>{
        const {id} =req.params;
        const query = {_id: new ObjectId(id)}
