@@ -1,5 +1,6 @@
 require('dotenv').config()
-const { MongoClient, ServerApiVersion } = require('mongodb');
+
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express')
 const app = express()
 const cors = require('cors')
@@ -33,7 +34,60 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    // Send a ping to confirm a successful connection
+
+    const bloodXDB = client.db('bloodXDB')
+    const usersCollection = bloodXDB.collection('users')
+    const donationRequestsCollection = bloodXDB.collection('donationRequests')
+
+    //user related api
+    app.get('/users/:email/role', async(req,res)=>{
+
+        const email = req.params.email
+
+        const query ={email}
+        const result = await usersCollection.findOne(query)
+        res.send(result);
+    })
+    app.post('/users',async(req,res)=>{
+        const userInfo = req.body
+        userInfo.role = 'Doner'
+        userInfo.status = 'Active'
+        userInfo.createdAt = new Date()
+        const result = await usersCollection.insertOne(userInfo)
+        res.send(result);
+    })
+    //user profile update
+    app.patch('/users',async(req,res)=>{
+        const updateInfo = req.body
+        const query ={_id: new ObjectId(updateInfo._id)}
+        const updatedDoc ={
+            $set:{
+                name: updateInfo.name,
+                email:updateInfo.email,
+                district: updateInfo.district,
+                upzilla: updateInfo.upzilla,
+                bloodGroup: updateInfo.bloodGroup
+            }
+        }
+        const result = await usersCollection.updateOne(query,updatedDoc)
+        res.send(result);
+    })
+
+    //Donation request related api
+    app.post('/donationRequests',async(req,res)=>{
+        const donationRequestData = req.body
+        donationRequestData.createdAt = new Date()
+        const result = await donationRequestsCollection.insertOne(donationRequestData)
+        res.send(result);
+    })
+
+    app.get('/donationRequests/:email',async(req,res)=>{
+        const email = req.params.email;
+        const query ={requesterEmail:email}
+        const result = await donationRequestsCollection.find(query).toArray()
+        res.send(result);
+    })
+
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
