@@ -1,12 +1,11 @@
 require('dotenv').config()
-
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express')
 const app = express()
 const cors = require('cors')
 const admin = require("firebase-admin");
 
-let serviceAccount = require("./bloodx-firebase-adminsdk.json");
+const serviceAccount = require("./bloodx-firebase-adminsdk.json");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -16,6 +15,25 @@ admin.initializeApp({
 app.use(cors())
 app.use(express.json())
 
+const verifyFBToken=async(req,res,next)=>{
+    const header = req.headers.authorization
+    if(!header){
+        res.status(401).send({message: 'unauthorized access'})
+    }
+    const token = header.split(' ')[1]
+    if(!token){
+        res.status(401).send({message: 'unauthorized access'})
+    }
+    try{
+        const decoded = await admin.auth().verifyIdToken(token)
+        req.decoded_email = decoded.email
+        next();
+    }
+    catch(error){
+        res.status(401).send({message: 'unauthorized access'})
+    }
+
+}
 
 
 
@@ -39,8 +57,10 @@ async function run() {
     const usersCollection = bloodXDB.collection('users')
     const donationRequestsCollection = bloodXDB.collection('donationRequests')
 
+
+    //
     //user related api
-    app.get('/users/:email/role', async(req,res)=>{
+    app.get('/users/:email/role',verifyFBToken, async(req,res)=>{
 
         const email = req.params.email
 
