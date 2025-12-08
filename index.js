@@ -50,7 +50,7 @@ async function run() {
     })
     app.post('/users',async(req,res)=>{
         const userInfo = req.body
-        userInfo.role = 'Doner'
+        userInfo.role = 'Donor'
         userInfo.status = 'Active'
         userInfo.createdAt = new Date()
         const result = await usersCollection.insertOne(userInfo)
@@ -72,6 +72,46 @@ async function run() {
         const result = await usersCollection.updateOne(query,updatedDoc)
         res.send(result);
     })
+    //admin control api
+    app.get('/users',async(req,res)=>{
+        const {status,limit=0,skip=0} = req.query
+        const query = {}
+        if(status){
+            query.status = status
+        }
+
+        const result = await usersCollection.find(query).sort({createdAt: -1}).skip(parseInt(skip)).limit(parseInt(limit)).toArray()
+        const totalUsers = await usersCollection.estimatedDocumentCount()
+
+        res.send({result,totalUsers})
+    })
+    //admin controlled---> update user status
+    app.patch('/users/:id/changeStatus',async(req,res)=>{
+        const id = req.params.id;
+        const statusInfo =req.body;
+        const query ={_id: new ObjectId(id)}
+        const updatedDoc = {
+            $set: {
+                status: statusInfo.status
+            }
+        }
+        const result = await usersCollection.updateOne(query,updatedDoc)
+        res.send(result);
+    })
+    //admin controlled---> update user role
+    app.patch('/users/:id/changeRole',async(req,res)=>{
+        const id = req.params.id;
+        const roleInfo =req.body;
+        const query ={_id: new ObjectId(id)}
+        const updatedDoc = {
+            $set: {
+                role: roleInfo.role
+            }
+        }
+        const result = await usersCollection.updateOne(query,updatedDoc)
+        res.send(result);
+    })
+
 
     //Donation request related api
     app.get('/donationRequests', async(req,res)=>{
@@ -82,7 +122,8 @@ async function run() {
             }
             const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).skip(parseInt(skip)).limit(parseInt(limit)).toArray()
             const totalRequests = await donationRequestsCollection.countDocuments({requesterEmail: email});
-            res.send({result,totalRequests})
+            const totalData = await donationRequestsCollection.estimatedDocumentCount()
+            res.send({result,totalRequests,totalData})
     })
     app.get('/donationRequests/:id/request',async(req,res)=>{
         const id = req.params.id;
