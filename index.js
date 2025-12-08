@@ -115,10 +115,13 @@ async function run() {
 
     //Donation request related api
     app.get('/donationRequests', async(req,res)=>{
-            const {email,limit=0,skip=0} =req.query
+            const {email,donationStatus,limit=0,skip=0} =req.query
             const query = {}
             if(email){
              query.requesterEmail = email
+            }
+            if(donationStatus){
+                query.donationStatus = donationStatus
             }
             const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).skip(parseInt(skip)).limit(parseInt(limit)).toArray()
             const totalRequests = await donationRequestsCollection.countDocuments({requesterEmail: email});
