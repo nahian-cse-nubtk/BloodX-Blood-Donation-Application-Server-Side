@@ -1,4 +1,5 @@
 require('dotenv').config()
+
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const express = require('express')
 const app = express()
@@ -58,7 +59,15 @@ async function run() {
     const donationRequestsCollection = bloodXDB.collection('donationRequests')
 
 
-    //
+    //middle for database admin access
+    const verifyAdmin =async(req,res,next)=>{
+        const email = req.decoded_email
+        const query ={email}
+        const user = await usersCollection.findOne(query)
+        if(!user || user.role!=='Admin'){
+            return res.status(403).send({message: 'access forbidden'})
+        }
+    }
     //user related api
     app.get('/users/:email/role',verifyFBToken, async(req,res)=>{
 
@@ -200,11 +209,44 @@ async function run() {
     const result =await donationRequestsCollection.updateOne(query,updatedDoc)
     res.send(result);
    })
+   app.patch('/donationReqest/:id/acceptRequest',async(req,res)=>{
+    const {id}=req.params
+    const donorData = req.body;
+    const query ={_id: new ObjectId(id)}
+    const updatedDoc ={
+        $set:{
+            donorName:donorData.donorName,
+            donorEmail: donorData.donorEmail,
+            donationStatus: donorData.donationStatus
+        }
+    }
+    const result = await donationRequestsCollection.updateOne(query,updatedDoc)
+    res.send(result)
+   })
    app.delete('/donationRequests/:id/request',async(req,res)=>{
        const {id} =req.params;
        const query = {_id: new ObjectId(id)}
        const result = await donationRequestsCollection.deleteOne(query)
        res.send(result);
+   })
+   //donor info send based on query
+   app.post('/donorsData',async(req,res)=>{
+    const {district,upzilla,bloodGroup}=req.body
+
+
+    const query ={}
+    if(district){
+        query.district ={$regex: district, $options: 'i'}
+    }
+    if(upzilla){
+        query.upzilla = {$regex: upzilla, $options: 'i'}
+    }
+    if(bloodGroup){
+        query.bloodGroup =bloodGroup
+    }
+    const result = await usersCollection.find(query).toArray()
+    
+    res.send(result)
    })
 
     await client.db("admin").command({ ping: 1 });
