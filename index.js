@@ -5,8 +5,9 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const admin = require("firebase-admin");
-
+const stripe = require('stripe')(process.env.STRIPE_SECRET)
 const serviceAccount = require("./bloodx-firebase-adminsdk.json");
+const { v4: uuidv4 } = require("uuid");
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
@@ -49,6 +50,11 @@ const client = new MongoClient(uri, {
   }
 });
 
+//tracking id generator
+function generateTrackingId() {
+  return "TRK-" + uuidv4();
+}
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -57,7 +63,7 @@ async function run() {
     const bloodXDB = client.db('bloodXDB')
     const usersCollection = bloodXDB.collection('users')
     const donationRequestsCollection = bloodXDB.collection('donationRequests')
-
+    const fundDonationCollection = bloodXDB.collection('funds')
 
     //middle for database admin access
     const verifyAdmin =async(req,res,next)=>{
@@ -245,9 +251,68 @@ async function run() {
         query.bloodGroup =bloodGroup
     }
     const result = await usersCollection.find(query).toArray()
-    
+
     res.send(result)
    })
+
+   //payment related api
+
+    app.post('/create-checkout-session',async(req,res)=>{
+             const paymentInfo=req.body;
+
+             const session = await stripe.checkout.sessions.create({
+                line_items:[
+                    {
+                        price_data:{
+                            currency:'usd',
+                            unit_amount: parseInt(paymentInfo.donateAmount)*100,
+                            product_data:{
+                                name:'Fund Donate Money'
+                            },
+
+                        },
+                        quantity: 1
+                    }
+                ],
+                customer_email:paymentInfo.donorEmail,
+                mode:'payment',
+                metadata:{
+                    customerName: paymentInfo.donorName,
+                },
+                success_url:`${process.env.SITE_DOMAIN}/paymentSussess?sessionId={CHECKOUT_SESSION_ID}`,
+                cancel_url:`${process.env.SITE_DOMAIN}/paymentCancel`
+             })
+             res.send({url: session.url})
+        })
+//payment success api-->backend validataion
+
+        app.patch('/payment-success',async(req,res)=>{
+            const sessionId = req.query.sessionId
+            const session =await stripe.checkout.sessions.retrieve(sessionId)
+            
+            if(session.payment_status==='paid'){
+                const trackingId = generateTrackingId()
+                const fundData={
+                    donateAmount:session.amount_total/100,
+                    donerEmail:session.customer_email,
+                    donerName:session.metadata.customerName,
+                    fundDonateAt: new Date(),
+                    transectionId:session.payment_intent,
+                    trackingId: trackingId
+                }
+                const query ={transectionId:session.payment_intent}
+                const fundDataExists = await fundDonationCollection.findOne(query)
+
+                if(fundDataExists){
+                    return res.send({message: 'Already Inserted'})
+                }
+                else{
+                    const result =await fundDonationCollection.insertOne(fundData)
+                    res.send({result,fundData})
+                }
+
+            }
+        })
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
@@ -262,7 +327,6 @@ run().catch(console.dir);
 app.get('/',(req,res)=>{
     res.send('The Server is running properly')
 })
-
 
 
 
