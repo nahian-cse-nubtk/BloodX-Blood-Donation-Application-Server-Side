@@ -289,7 +289,7 @@ async function run() {
         app.patch('/payment-success',async(req,res)=>{
             const sessionId = req.query.sessionId
             const session =await stripe.checkout.sessions.retrieve(sessionId)
-            
+
             if(session.payment_status==='paid'){
                 const trackingId = generateTrackingId()
                 const fundData={
@@ -304,7 +304,7 @@ async function run() {
                 const fundDataExists = await fundDonationCollection.findOne(query)
 
                 if(fundDataExists){
-                    return res.send({message: 'Already Inserted'})
+                    return res.send({fundData:fundDataExists})
                 }
                 else{
                     const result =await fundDonationCollection.insertOne(fundData)
