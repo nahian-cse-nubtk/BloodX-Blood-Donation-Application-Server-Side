@@ -313,7 +313,13 @@ async function run() {
 
             }
         })
-
+   //get funds data
+   app.get('/donateFunds',async(req,res)=>{
+    const {skip=0,limit=0}=req.query
+    const result = await fundDonationCollection.find({}).project({donerName: 1,donateAmount: 1,fundDonateAt: 1}).sort({fundDonateAt: -1}).skip(parseInt(skip)).limit(parseInt(limit)).toArray()
+    const totalFundData = await fundDonationCollection.estimatedDocumentCount()
+    res.send({result,totalFundData})
+   })
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
