@@ -320,6 +320,15 @@ async function run() {
     const totalFundData = await fundDonationCollection.estimatedDocumentCount()
     res.send({result,totalFundData})
    })
+   // get statistics data
+   app.get('/stats',async(req,res)=>{
+    const totalFund = await fundDonationCollection.aggregate([
+        {$group: {_id: null, total: {$sum: "$donateAmount"}}}
+    ]).toArray();
+    const totalDonor = await usersCollection.countDocuments({role: 'Donor'})
+    const totalDonationRequets = await donationRequestsCollection.estimatedDocumentCount()
+    res.send({totalFund: totalFund[0]?.total||0,totalDonor: totalDonor,donationRequests: totalDonationRequets})
+   })
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
