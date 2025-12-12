@@ -22,6 +22,7 @@ const verifyFBToken=async(req,res,next)=>{
     if(!header){
         res.status(401).send({message: 'unauthorized access'})
     }
+    console.log(token)
     const token = header.split(' ')[1]
     if(!token){
         res.status(401).send({message: 'unauthorized access'})
@@ -92,7 +93,7 @@ async function run() {
         res.send(result);
     })
     //user profile update
-    app.patch('/users',async(req,res)=>{
+    app.patch('/users', verifyFBToken,async(req,res)=>{
         const updateInfo = req.body
         const query ={_id: new ObjectId(updateInfo._id)}
         const updatedDoc ={
@@ -108,7 +109,7 @@ async function run() {
         res.send(result);
     })
     //admin control api
-    app.get('/users',async(req,res)=>{
+    app.get('/users',verifyFBToken,verifyAdmin,async(req,res)=>{
         const {status,limit=0,skip=0} = req.query
         const query = {}
         if(status){
@@ -121,7 +122,7 @@ async function run() {
         res.send({result,totalUsers})
     })
     //admin controlled---> update user status
-    app.patch('/users/:id/changeStatus',async(req,res)=>{
+    app.patch('/users/:id/changeStatus',verifyFBToken,verifyAdmin,async(req,res)=>{
         const id = req.params.id;
         const statusInfo =req.body;
         const query ={_id: new ObjectId(id)}
@@ -134,7 +135,7 @@ async function run() {
         res.send(result);
     })
     //admin controlled---> update user role
-    app.patch('/users/:id/changeRole',async(req,res)=>{
+    app.patch('/users/:id/changeRole',verifyFBToken,verifyAdmin,async(req,res)=>{
         const id = req.params.id;
         const roleInfo =req.body;
         const query ={_id: new ObjectId(id)}
@@ -149,7 +150,10 @@ async function run() {
 
 
     //Donation request related api
-    app.get('/donationRequests', async(req,res)=>{
+
+    //donation request public api
+
+    app.get('/donationRequests', verifyFBToken,async(req,res)=>{
             const {email,donationStatus,limit=0,skip=0} =req.query
             const query = {}
             if(email){
@@ -163,27 +167,38 @@ async function run() {
             const totalData = await donationRequestsCollection.estimatedDocumentCount()
             res.send({result,totalRequests,totalData})
     })
-    app.get('/donationRequests/:id/request',async(req,res)=>{
+     app.get('/donationRequest/public',async(req,res)=>{
+        const {donationStatus}=req.query
+
+        const query ={}
+        if(donationStatus){
+            query.donationStatus = donationStatus
+        }
+        const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).toArray()
+
+        res.send(result)
+    })
+    app.get('/donationRequests/:id/request',verifyFBToken,async(req,res)=>{
         const id = req.params.id;
         const query = {_id: new ObjectId(id)}
         const result = await donationRequestsCollection.findOne(query)
         res.send(result);
     })
 
-    app.get('/donationRequests/:email',async(req,res)=>{
+    app.get('/donationRequests/:email',verifyFBToken,async(req,res)=>{
         const email = req.params.email;
         const query ={requesterEmail:email}
         const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).toArray()
         res.send(result);
     })
 
-    app.post('/donationRequests',async(req,res)=>{
+    app.post('/donationRequests',verifyAdmin,async(req,res)=>{
         const donationRequestData = req.body
         donationRequestData.createdAt = new Date()
         const result = await donationRequestsCollection.insertOne(donationRequestData)
         res.send(result);
     })
-   app.patch('/donationRequests/:id/request', async(req,res)=>{
+   app.patch('/donationRequests/:id/request',verifyFBToken, async(req,res)=>{
     const id = req.params.id;
     const data = req.body;
     const query ={_id: new ObjectId(id)}
@@ -203,7 +218,7 @@ async function run() {
     const result =await donationRequestsCollection.updateOne(query,updatedDoc)
     res.send(result);
    })
-   app.patch('/donationRequests/:id/status',async(req,res)=>{
+   app.patch('/donationRequests/:id/status',verifyFBToken,async(req,res)=>{
     const {id}=req.params
     const {donationStatus}=req.body
     const query = {_id: new ObjectId(id)}
@@ -215,7 +230,7 @@ async function run() {
     const result =await donationRequestsCollection.updateOne(query,updatedDoc)
     res.send(result);
    })
-   app.patch('/donationReqest/:id/acceptRequest',async(req,res)=>{
+   app.patch('/donationReqest/:id/acceptRequest',verifyFBToken,async(req,res)=>{
     const {id}=req.params
     const donorData = req.body;
     const query ={_id: new ObjectId(id)}
@@ -229,7 +244,7 @@ async function run() {
     const result = await donationRequestsCollection.updateOne(query,updatedDoc)
     res.send(result)
    })
-   app.delete('/donationRequests/:id/request',async(req,res)=>{
+   app.delete('/donationRequests/:id/request',verifyFBToken,async(req,res)=>{
        const {id} =req.params;
        const query = {_id: new ObjectId(id)}
        const result = await donationRequestsCollection.deleteOne(query)
@@ -257,7 +272,7 @@ async function run() {
 
    //payment related api
 
-    app.post('/create-checkout-session',async(req,res)=>{
+    app.post('/create-checkout-session',verifyFBToken,async(req,res)=>{
              const paymentInfo=req.body;
 
              const session = await stripe.checkout.sessions.create({
@@ -286,7 +301,7 @@ async function run() {
         })
 //payment success api-->backend validataion
 
-        app.patch('/payment-success',async(req,res)=>{
+        app.patch('/payment-success',verifyFBToken,async(req,res)=>{
             const sessionId = req.query.sessionId
             const session =await stripe.checkout.sessions.retrieve(sessionId)
 
@@ -314,14 +329,14 @@ async function run() {
             }
         })
    //get funds data
-   app.get('/donateFunds',async(req,res)=>{
+   app.get('/donateFunds',verifyFBToken,async(req,res)=>{
     const {skip=0,limit=0}=req.query
     const result = await fundDonationCollection.find({}).project({donerName: 1,donateAmount: 1,fundDonateAt: 1}).sort({fundDonateAt: -1}).skip(parseInt(skip)).limit(parseInt(limit)).toArray()
     const totalFundData = await fundDonationCollection.estimatedDocumentCount()
     res.send({result,totalFundData})
    })
    // get statistics data
-   app.get('/stats',async(req,res)=>{
+   app.get('/stats',verifyFBToken,async(req,res)=>{
     const totalFund = await fundDonationCollection.aggregate([
         {$group: {_id: null, total: {$sum: "$donateAmount"}}}
     ]).toArray();
