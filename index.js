@@ -151,7 +151,7 @@ async function run() {
 
     //Donation request related api
 
-    //donation request public api
+
 
     app.get('/donationRequests', verifyFBToken,async(req,res)=>{
             const {email,donationStatus,limit=0,skip=0} =req.query
@@ -167,6 +167,7 @@ async function run() {
             const totalData = await donationRequestsCollection.estimatedDocumentCount()
             res.send({result,totalRequests,totalData})
     })
+    //donation request public api
      app.get('/donationRequest/public',async(req,res)=>{
         const {donationStatus}=req.query
 
@@ -192,7 +193,7 @@ async function run() {
         res.send(result);
     })
 
-    app.post('/donationRequests',verifyAdmin,async(req,res)=>{
+    app.post('/donationRequests',verifyFBToken,async(req,res)=>{
         const donationRequestData = req.body
         donationRequestData.createdAt = new Date()
         const result = await donationRequestsCollection.insertOne(donationRequestData)
