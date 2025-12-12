@@ -22,7 +22,7 @@ const verifyFBToken=async(req,res,next)=>{
     if(!header){
         res.status(401).send({message: 'unauthorized access'})
     }
-    console.log(token)
+
     const token = header.split(' ')[1]
     if(!token){
         res.status(401).send({message: 'unauthorized access'})
@@ -72,7 +72,10 @@ async function run() {
         const query ={email}
         const user = await usersCollection.findOne(query)
         if(!user || user.role!=='Admin'){
-            return res.status(403).send({message: 'access forbidden'})
+            return res.status(403).send({message: 'Access Forbidden'})
+        }
+        else{
+            next();
         }
     }
     //user related api
@@ -80,7 +83,13 @@ async function run() {
 
         const email = req.params.email
 
-        const query ={email}
+        const query ={}
+        if(email){
+            query.email =email
+            if(req.decoded_email !== email){
+                res.status(403).send({message: "Access Forbidden"})
+            }
+        }
         const result = await usersCollection.findOne(query)
         res.send(result);
     })
@@ -93,7 +102,7 @@ async function run() {
         res.send(result);
     })
     //user profile update
-    app.patch('/users', verifyFBToken,async(req,res)=>{
+    app.patch('/users',verifyFBToken,async(req,res)=>{
         const updateInfo = req.body
         const query ={_id: new ObjectId(updateInfo._id)}
         const updatedDoc ={
@@ -188,7 +197,13 @@ async function run() {
 
     app.get('/donationRequests/:email',verifyFBToken,async(req,res)=>{
         const email = req.params.email;
-        const query ={requesterEmail:email}
+        const query ={}
+        if(email){
+            query.requesterEmail = email
+             if(req.decoded_email !==email){
+                res.status(403).send({message: 'Access Forbidden'})
+             }
+        }
         const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).toArray()
         res.send(result);
     })
