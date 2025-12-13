@@ -6,9 +6,10 @@ const app = express()
 const cors = require('cors')
 const admin = require("firebase-admin");
 const stripe = require('stripe')(process.env.STRIPE_SECRET)
-const serviceAccount = require("./bloodx-firebase-adminsdk.json");
 const { v4: uuidv4 } = require("uuid");
 
+const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, "base64").toString("utf8");
+const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
@@ -59,7 +60,7 @@ function generateTrackingId() {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     const bloodXDB = client.db('bloodXDB')
     const usersCollection = bloodXDB.collection('users')
@@ -360,8 +361,8 @@ async function run() {
     const totalDonationRequets = await donationRequestsCollection.estimatedDocumentCount()
     res.send({totalFund: totalFund[0]?.total||0,totalDonor: totalDonor,donationRequests: totalDonationRequets})
    })
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
