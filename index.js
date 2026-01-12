@@ -179,15 +179,16 @@ async function run() {
     })
     //donation request public api
      app.get('/donationRequest/public',async(req,res)=>{
-        const {donationStatus}=req.query
+        const {donationStatus,limit=0,skip=0}=req.query
 
         const query ={}
         if(donationStatus){
             query.donationStatus = donationStatus
         }
-        const result = await donationRequestsCollection.find(query).sort({createdAt: -1}).toArray()
+        const result = await donationRequestsCollection.find(query).skip(parseInt(skip)).limit(parseInt(limit)).sort({createdAt: -1}).toArray()
+        const total = await donationRequestsCollection.countDocuments({donationStatus:donationStatus})
 
-        res.send(result)
+        res.send({result,total})
     })
     app.get('/donationRequests/:id/request',verifyFBToken,async(req,res)=>{
         const id = req.params.id;
