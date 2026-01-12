@@ -179,9 +179,14 @@ async function run() {
     })
     //donation request public api
      app.get('/donationRequest/public',async(req,res)=>{
-        const {donationStatus,limit=0,skip=0}=req.query
+        const {donationStatus,limit=0,skip=0,searchText=''}=req.query
+
 
         const query ={}
+        if(searchText){
+            query.recipientName={$regex: searchText,$options: 'i'}
+        }
+
         if(donationStatus){
             query.donationStatus = donationStatus
         }
